@@ -1,6 +1,6 @@
-import { Client, Collection } from "discord.js";
+import { ChannelType, Client, Collection } from "discord.js";
 import { Connection } from "mysql";
-import { channelCounterTypes, configsType, databaseTable } from "../typings/typings";
+import { channelCounterTypes, configsType, countChannelType, createCountersType, databaseTable } from "../typings/typings";
 import { getValidChannelOrder } from "../utils/functions";
 
 export class Counter {
@@ -16,7 +16,7 @@ export class Counter {
         this.configs = {
             defaultChannelType: configs?.defaultChannelType ?? 'voice',
             defaultChannelJoinableIfVoice: configs?.defaultChannelJoinableIfVoice ?? false,
-            defaultChannelNames: configs?.defaultChannelNames ?? { all: 'All: {count}', bots: 'Bots: {count}', humans: 'Humans: {count}' },
+            defaultChannelNames: configs?.defaultChannelNames ?? { all: 'All: {count}', bots: 'Bots: {count}', humans: 'Humans: {count}', category: '📊 Stats' },
             defaultChannelOrders: getValidChannelOrder(configs?.defaultChannelOrders),
             defaultChannelEnabled: {
                 all: configs?.defaultChannelEnabled?.all ?? true,
@@ -45,8 +45,10 @@ export class Counter {
             bots_name VARCHAR(255) DEFAULT NULL,
             humans_name VARCHAR(255) DEFAULT NULL
         )`)
+
+        this.fillCache();
     }
-    private getEnabled({ guild_id, type }: { guild_id: string; type: channelCounterTypes; }) {
+    public getEnabled({ guild_id, type }: { guild_id: string; type: channelCounterTypes; }) {
         const mapping: Record<channelCounterTypes, number> = {
             all: 0,
             bots: 1,
@@ -90,4 +92,50 @@ export class Counter {
             this.cache.set(data.guild_id, data);
         }
     }
+    public createCounters({ guild, category, enable = {}, names = {}, channelsType = this.configs.defaultChannelType, order }: createCountersType): Promise<databaseTable> {
+        order = getValidChannelOrder(order);
+
+        (['all', 'bots', 'humans'] as channelCounterTypes[]).forEach((x) => {
+            names[x] = names[x] ?? this.configs.defaultChannelNames[x];
+            enable[x] = enable[x] ?? this.configs.defaultChannelEnabled[x];
+        });
+
+        return new Promise(async(resolve, reject) => {
+            if (!category) {
+                category = await guild.channels.create({
+                    name: names.category ?? this.configs.defaultChannelNames.category,
+                    type: ChannelType.GuildCategory,
+                    position: 1
+                });
+            }
+
+            const type = this.getChannelType(channelsType);
+            for (const orderData of order) {
+                if (enable[orderData]) await guild.channels.create({
+                    name: names[orderData],
+                    type,
+                    parent: category
+                })
+                if (enable[orderData]) await guild.channels.create({
+                    name: names[orderData],
+                    type,
+                    parent: category
+                })
+                if (enable[orderData]) await guild.channels.create({
+                    name: names[orderData]
+                })
+
+            }
+        })
+    }
+    public getChannelType(inp: countChannelType): any {
+        const obj = {
+            voice: ChannelType.GuildVoice,
+            text: ChannelType.GuildText,
+            stage: ChannelType.GuildStageVoice
+        };
+        return obj[inp];
+    }
 }
+
+const x: keyof typeof ChannelType = 'AnnouncementThread'
