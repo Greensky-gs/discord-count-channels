@@ -22,7 +22,8 @@ export class Counter {
                 all: configs?.defaultChannelEnabled?.all ?? true,
                 bots: configs?.defaultChannelEnabled?.bots ?? true,
                 humans: configs?.defaultChannelEnabled?.humans ?? true
-            }
+            },
+            defaultLocale: (configs?.defaultLocale ?? 'en').length > 2 ? 'en' : (configs?.defaultLocale ?? 'en')
         }
     }
     public query<T = any>(sql: string): Promise<T[]> {
@@ -43,7 +44,8 @@ export class Counter {
             category VARCHAR(255) NOT NULL,
             all_name VARCHAR(255) DEFAULT NULL,
             bots_name VARCHAR(255) DEFAULT NULL,
-            humans_name VARCHAR(255) DEFAULT NULL
+            humans_name VARCHAR(255) DEFAULT NULL,
+            locale VARCHAR(2) NOT NULL DEFAULT '${this.configs.defaultLocale}'
         )`)
 
         this.fillCache();
@@ -81,8 +83,15 @@ export class Counter {
         });
         this.query(`UPDATE counters SET enabled='${list}' WHERE guild_id='${guild_id}'`);
     }
-    private generateEnableList() {
+    private generateEnableList(configs?: { all?: boolean; humans?: boolean; bots?: boolean; }) {
         const toStr = (bool: boolean) => bool ? 't' : 'f';
+        if (configs) {
+            let str = '';
+            for (const x of (['all', 'bots', 'humans'] as channelCounterTypes[])) {
+                str+= toStr(configs[x] ?? this.configs.defaultChannelEnabled[x]);
+            }
+            return str;
+        }
         return toStr(this.configs.defaultChannelEnabled.all) + toStr(this.configs.defaultChannelEnabled.bots) + toStr(this.configs.defaultChannelEnabled.humans);
     }
     private async fillCache() {
@@ -92,7 +101,22 @@ export class Counter {
             this.cache.set(data.guild_id, data);
         }
     }
-    public createCounters({ guild, category, enable = {}, names = {}, channelsType = this.configs.defaultChannelType, order }: createCountersType): Promise<databaseTable> {
+    private updateCounters(guild_id: string): Promise<void> {
+        return new Promise(async(resolve) => {
+            const { all_chan, bots, humans } = this.cache.get(guild_id);
+
+
+        })
+    }
+    private resolveChannelName({ guild_id, channel, int }: { guild_id: string; channel: channelCounterTypes, int: number }) {
+        const x: Record<string, 'all_chan' | 'bots' | 'humans'> = {
+            all: 'all_chan',
+            bots: 'bots',
+            humans: 'humans'
+        };
+        return this.cache.get(guild_id)[x[channel]].replace(/\{count\}/g, int.toLocaleString(this.cache.get(guild_id).locale));
+    }
+    public createCounters({ guild, category, enable = {}, names = {}, channelsType = this.configs.defaultChannelType, order, locale = this.configs.defaultLocale }: createCountersType): Promise<databaseTable> {
         order = getValidChannelOrder(order);
 
         (['all', 'bots', 'humans'] as channelCounterTypes[]).forEach((x) => {
@@ -110,22 +134,33 @@ export class Counter {
             }
 
             const type = this.getChannelType(channelsType);
-            for (const orderData of order) {
-                if (enable[orderData]) await guild.channels.create({
-                    name: names[orderData],
-                    type,
-                    parent: category
-                })
-                if (enable[orderData]) await guild.channels.create({
-                    name: names[orderData],
-                    type,
-                    parent: category
-                })
-                if (enable[orderData]) await guild.channels.create({
-                    name: names[orderData]
-                })
+            const chans = {
+                all: false,
+                bots: false,
+                humans: false
+            };
 
+            for (const orderData of order) {
+                if (enable[orderData]) chans[orderData] = await guild.channels.create({
+                    name: names[orderData],
+                    type,
+                    parent: category
+                })
+                if (enable[orderData]) chans[orderData] = await guild.channels.create({
+                    name: names[orderData],
+                    type,
+                    parent: category
+                })
+                if (enable[orderData]) chans[orderData] = await guild.channels.create({
+                    name: names[orderData],
+                    type,
+                    parent: category
+                })
             }
+            this.cache.set(guild.id, {
+                enabled: this.generateEnableList(enable),
+                all_chan: chans.all ? chans.all?.id : ''
+            })
         })
     }
     public getChannelType(inp: countChannelType): any {

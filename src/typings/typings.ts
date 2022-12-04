@@ -4,14 +4,15 @@ export type channelCounterTypes = 'bots' | 'humans' | 'all';
 export type countChannelType = 'voice' | 'text' | 'stage';
 
 export type configsType = {
-    defaultChannelType: countChannelType;
-    defaultChannelJoinableIfVoice: boolean;
+    defaultChannelType?: countChannelType;
+    defaultChannelJoinableIfVoice?: boolean;
     /**
      * Use {count} to set the number in the name
      */
-    defaultChannelNames: Record<channelCounterTypes | 'category', string>;
-    defaultChannelOrders: channelCounterTypes[];
-    defaultChannelEnabled: Record<channelCounterTypes, boolean>;
+    defaultChannelNames?: Record<channelCounterTypes | 'category', string>;
+    defaultChannelOrders?: channelCounterTypes[];
+    defaultChannelEnabled?: Record<channelCounterTypes, boolean>;
+    defaultLocale?: string;
 }
 export type databaseTable = {
     guild_id: string;
@@ -23,6 +24,7 @@ export type databaseTable = {
     all_name: string;
     bots_name: string;
     humans_name: string;
+    locale: string;
 }
 
 export type createCountersType = {
@@ -47,4 +49,5 @@ export type createCountersType = {
     category?: CategoryChannel;
     channelsType?: countChannelType;
     order?: channelCounterTypes[];
+    locale?: string;
 }
