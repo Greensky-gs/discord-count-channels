@@ -74,9 +74,6 @@ export class Counter {
 
         return enabledList[mapping[type]] === 't' ? true : false;
     }
-    /**
-     * @warning This method works only for cached datas
-     */
     private setEnabled({
         type,
         state,
@@ -277,11 +274,11 @@ export class Counter {
             if (this._cache.has(guild.id)) return reject('Guild already registered');
 
             const permissionOverwrites: OverwriteData[] = [
-                {
+                Object.assign({
                     id: guild.id,
-                    deny: ['Connect']
-                }
+                }, voiceJoinable ? { allow: ['Connect'] } : { deny: ['Connect'] } as any)
             ];
+
             if (!category) {
                 category = await guild.channels.create({
                     name: names.category ?? this.configs.defaultChannelNames.category,
