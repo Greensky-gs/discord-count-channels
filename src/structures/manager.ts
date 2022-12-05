@@ -363,11 +363,11 @@ export class Counter {
             const data = this._cache.get(guild_id);
 
             if (deleteChannels) {
-                const guild = await this.client.guilds.fetch(data.guild_id);
+                const guild = await this.client.guilds.fetch(data.guild_id).catch(() => {});
                 if (!guild) return resolve(data);
 
                 for (const id of [data.all_chan, data.bots, data.humans, data.category]) {
-                    const chan = await guild.channels.fetch(id);
+                    const chan = await guild.channels.fetch(id).catch(() => {});
                     if (chan) await chan.delete().catch(() => {});
                 }
             }
@@ -420,7 +420,7 @@ export class Counter {
         });
     }
     private async syncCounters() {
-        await this.client.guilds.fetch();
+        await this.client.guilds.fetch().catch(() => {});
         this.client.guilds.cache.forEach((guild) => {
             this.updateCounters(guild.id);
         });
