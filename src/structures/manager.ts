@@ -261,7 +261,7 @@ export class Counter {
             resolve(data);
         })
     }
-    public get counterList() {
+    public get cache() {
         return this._cache;
     }
     private getVar(str: string) {
