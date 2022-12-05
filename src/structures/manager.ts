@@ -252,11 +252,20 @@ export class Counter {
             return resolve(data);
         });
     }
-    public removeGuildCounter(guild_id: string): Promise<databaseTable> {
+    public removeGuildCounter({ guild_id, deleteChannels }: { guild_id: string; deleteChannels: boolean }): Promise<databaseTable> {
         return new Promise(async(resolve, reject) => {
             if (!this._cache.has(guild_id)) return reject('Guild not exists in cache')
             const data = this._cache.get(guild_id);
 
+            if (deleteChannels) {
+                const guild = await this.client.guilds.fetch(data.guild_id);
+                if (!guild) return resolve(data);
+
+                for (const id of [ data.all_chan, data.bots, data.humans, data.category ]) {
+                    const chan = await guild.channels.fetch(id);
+                    if (chan) await chan.delete().catch(() => {});
+                }
+            }
             await this.query(`DELETE FROM counters WHERE guild_id="${guild_id}"`);
             resolve(data);
         })
