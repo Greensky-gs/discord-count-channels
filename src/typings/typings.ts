@@ -51,5 +51,5 @@ export type createCountersType<T extends countChannelType = countChannelType> = 
     channelsType?: T;
     order?: channelCounterTypes[];
     locale?: string;
-    voiceJoinable?: T extends 'voice' ? boolean : null
+    voiceJoinable?: T extends 'voice' ? boolean : null;
 };
