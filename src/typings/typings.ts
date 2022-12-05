@@ -2,14 +2,14 @@ import { Guild, CategoryChannel } from 'discord.js';
 
 /**
  * Counter channels names types.
- * 
+ *
  * This is the types of counters you can set
  */
 export type channelCounterTypes = 'bots' | 'humans' | 'all';
 
 /**
  * count channel types
- * 
+ *
  * This is the counter channels types you can use to set a counter
  */
 export type countChannelType = 'voice' | 'text' | 'stage';
@@ -28,7 +28,7 @@ export type configsType = {
     defaultChannelJoinableIfVoice?: boolean;
     /**
      * Default channel names to all counters
-     * 
+     *
      * @var Use {count} to set the number in the name
      */
     defaultChannelNames?: Record<channelCounterTypes | 'category', string>;
@@ -42,7 +42,7 @@ export type configsType = {
     defaultChannelEnabled?: Record<channelCounterTypes, boolean>;
     /**
      * Default locale for all servers
-     * 
+     *
      * @warning Locales are two characters long
      * @examples Use `fr`, `en`, `us`, `de` ...
      */
@@ -123,7 +123,7 @@ export type createCountersType<T extends countChannelType = countChannelType> = 
     };
     /**
      * Counter names
-     * 
+     *
      * @var Use {count} to set the number in the counter
      */
     names?: {
@@ -146,7 +146,7 @@ export type createCountersType<T extends countChannelType = countChannelType> = 
     };
     /**
      * Category channel to set the counter in
-     * 
+     *
      * If not provided, category is created
      */
     category?: CategoryChannel;
@@ -160,7 +160,7 @@ export type createCountersType<T extends countChannelType = countChannelType> = 
     order?: channelCounterTypes[];
     /**
      * Counters language
-     * 
+     *
      * @warning Locales are two letters long
      * @examples Use for example `fr`, `en`, `us`, `de` ...
      */

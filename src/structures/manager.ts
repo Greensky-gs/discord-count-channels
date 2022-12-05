@@ -274,9 +274,12 @@ export class Counter {
             if (this._cache.has(guild.id)) return reject('Guild already registered');
 
             const permissionOverwrites: OverwriteData[] = [
-                Object.assign({
-                    id: guild.id,
-                }, voiceJoinable ? { allow: ['Connect'] } : { deny: ['Connect'] } as any)
+                Object.assign(
+                    {
+                        id: guild.id
+                    },
+                    voiceJoinable ? { allow: ['Connect'] } : ({ deny: ['Connect'] } as any)
+                )
             ];
 
             if (!category) {
