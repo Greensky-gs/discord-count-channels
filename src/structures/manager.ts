@@ -259,5 +259,3 @@ export class Counter {
         return obj[inp];
     }
 }
-
-const x: keyof typeof ChannelType = 'AnnouncementThread';
