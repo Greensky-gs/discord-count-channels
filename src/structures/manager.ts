@@ -117,8 +117,40 @@ export class Counter {
         }
     }
     private updateCounters(guild_id: string): Promise<void> {
-        return new Promise(async (resolve) => {
+        return new Promise(async (resolve, reject) => {
             const { all_chan, bots, humans } = this.cache.get(guild_id);
+            const guild = this.client.guilds.cache.get(guild_id);
+
+            if (!guild) return reject('Guild not found');
+
+            const promises = [];
+            await guild.members.fetch();
+            if (this.getEnabled({ guild_id, type: 'all' })) {
+                const channel = await guild.channels.fetch(all_chan);
+                if (channel) promises.push(channel.setName(this.resolveChannelName({
+                    guild_id,
+                    channel: 'all',
+                    int: guild.memberCount
+                })))
+            }
+            if (this.getEnabled({ guild_id, type: 'bots' })) {
+                const channel = await guild.channels.fetch(bots);
+                if (channel) promises.push(channel.setName(this.resolveChannelName({
+                    guild_id,
+                    channel: 'bots',
+                    int: guild.members.cache.filter(x => x.user.bot).size
+                })))
+            }
+            if (this.getEnabled({ guild_id, type: 'humans' })) {
+                const channel = await guild.channels.fetch(humans);
+                if (channel) promises.push(channel.setName(this.resolveChannelName({
+                    guild_id,
+                    channel: 'humans',
+                    int: guild.members.cache.filter(x => !x.user.bot).size
+                })))
+            }
+            await Promise.all(promises);
+            resolve();
         });
     }
     private resolveChannelName({
@@ -156,6 +188,8 @@ export class Counter {
         });
 
         return new Promise(async (resolve, reject) => {
+            if (this.cache.has(guild.id)) return reject('Guild already registered')
+
             if (!category) {
                 category = await guild.channels.create({
                     name: names.category ?? this.configs.defaultChannelNames.category,
@@ -165,10 +199,10 @@ export class Counter {
             }
 
             const type = this.getChannelType(channelsType);
-            const chans = {
-                all: false,
-                bots: false,
-                humans: false
+            const chans: Record<string, Record<'id', undefined>> = {
+                all: {id: undefined},
+                bots: {id: undefined},
+                humans: {id: undefined}
             };
 
             for (const orderData of order) {
@@ -191,7 +225,8 @@ export class Counter {
                         parent: category
                     });
             }
-            this.cache.set(guild.id, {
+            
+            const data = {
                 enabled: this.generateEnableList(enable),
                 all_chan: chans?.all?.id ?? '',
                 all_name: names.all,
@@ -200,9 +235,20 @@ export class Counter {
                 bots_name: names.bots,
                 humans: chans?.humans?.id ?? '',
                 humans_name: names?.humans,
-                category: category.id
-            });
+                category: category.id,
+                locale: locale
+            }
+            this.cache.set(guild.id, data);
+
+            await this.updateCounters(guild.id);
+            await this.query(`INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, botss_name, humans_name, locale) VALUES ("${guild.id}", "${this.generateEnableList(enable)}", "${chans?.all?.id ?? ''}", "${chans?.humans?.id ?? ''}", "${chans?.bots?.id ?? ''}", "${category.id}", "${this.getVar(names?.all) ?? ''}", "${this.getVar(names?.bots) ?? ''}", "${this.getVar(names?.humans) ?? ''}", "${locale}" )`);
+
+            return resolve(data);
         });
+    }
+    private getVar(str: string) {
+        if (!str) return str;
+        return str.replace(/"/g, '\\"');
     }
     public getChannelType(inp: countChannelType): any {
         const obj = {
