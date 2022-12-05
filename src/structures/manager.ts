@@ -124,7 +124,7 @@ export class Counter {
     }
     private updateCounters(guild_id: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
-            const { all_chan, bots, humans } = this._cache.get(guild_id);
+            const { all_chan, bots, humans, channelType } = this._cache.get(guild_id);
             const guild = this.client.guilds.cache.get(guild_id);
 
             if (!guild) return reject('Guild not found');
@@ -132,15 +132,31 @@ export class Counter {
             const promises = [];
             await guild.members.fetch();
             if (this.getEnabled({ guild_id, type: 'all' })) {
-                const channel = await guild.channels.fetch(all_chan);
+                const channel = await guild.channels.fetch(all_chan) ?? await guild.channels.create({
+                    name: this.resolveChannelName({
+                        guild_id,
+                        channel: 'all',
+                        int: guild.memberCount
+                    }),
+                    type: this.getChannelType(channelType)
+                });
+
                 if (channel) promises.push(channel.setName(this.resolveChannelName({
                     guild_id,
                     channel: 'all',
-                    int: guild.memberCount
+                    int: 0
                 })))
             }
             if (this.getEnabled({ guild_id, type: 'bots' })) {
-                const channel = await guild.channels.fetch(bots);
+                const channel = await guild.channels.fetch(bots) ?? await guild.channels.create({
+                    name: this.resolveChannelName({
+                        guild_id,
+                        channel: 'bots',
+                        int: 0
+                    }),
+                    type: this.getChannelType(channelType)
+                });;
+
                 if (channel) promises.push(channel.setName(this.resolveChannelName({
                     guild_id,
                     channel: 'bots',
@@ -148,7 +164,14 @@ export class Counter {
                 })))
             }
             if (this.getEnabled({ guild_id, type: 'humans' })) {
-                const channel = await guild.channels.fetch(humans);
+                const channel = await guild.channels.fetch(humans) ?? await guild.channels.create({
+                    name: this.resolveChannelName({
+                        guild_id,
+                        channel: 'humans',
+                        int: 0
+                    }),
+                    type: this.getChannelType(channelType)
+                });;
                 if (channel) promises.push(channel.setName(this.resolveChannelName({
                     guild_id,
                     channel: 'humans',
@@ -242,12 +265,13 @@ export class Counter {
                 humans: chans?.humans?.id ?? '',
                 humans_name: names?.humans,
                 category: category.id,
-                locale: locale
+                locale: locale,
+                channelType: channelsType
             }
             this._cache.set(guild.id, data);
 
             await this.updateCounters(guild.id);
-            await this.query(`INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, botss_name, humans_name, locale) VALUES ("${guild.id}", "${this.generateEnableList(enable)}", "${chans?.all?.id ?? ''}", "${chans?.humans?.id ?? ''}", "${chans?.bots?.id ?? ''}", "${category.id}", "${this.getVar(names?.all) ?? ''}", "${this.getVar(names?.bots) ?? ''}", "${this.getVar(names?.humans) ?? ''}", "${locale}" )`);
+            await this.query(`INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, botss_name, humans_name, locale, channelType) VALUES ("${guild.id}", "${this.generateEnableList(enable)}", "${chans?.all?.id ?? ''}", "${chans?.humans?.id ?? ''}", "${chans?.bots?.id ?? ''}", "${category.id}", "${this.getVar(names?.all) ?? ''}", "${this.getVar(names?.bots) ?? ''}", "${this.getVar(names?.humans) ?? ''}", "${locale}", "${channelsType ?? this.configs?.defaultChannelType}" )`);
 
             return resolve(data);
         });

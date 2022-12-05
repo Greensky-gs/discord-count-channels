@@ -25,6 +25,7 @@ export type databaseTable = {
     bots_name: string;
     humans_name: string;
     locale: string;
+    channelType: countChannelType;
 };
 
 export type createCountersType = {
