@@ -1,4 +1,4 @@
-import { ChannelType, Client, Collection } from 'discord.js';
+import { ChannelType, Client, Collection, OverwriteData } from 'discord.js';
 import { Connection } from 'mysql';
 import {
     channelCounterTypes,
@@ -95,7 +95,7 @@ export class Counter {
                 ...this._cache.get(guild_id),
                 enabled: list
             });
-            
+
             await this.query(`UPDATE counters SET enabled='${list}' WHERE guild_id='${guild_id}'`);
             resolve(this.cache.get(guild_id));           
         })
@@ -229,7 +229,8 @@ export class Counter {
         names = {},
         channelsType = this.configs.defaultChannelType,
         order,
-        locale = this.configs.defaultLocale
+        locale = this.configs.defaultLocale,
+        voiceJoinable = true
     }: createCountersType): Promise<databaseTable> {
         order = getValidChannelOrder(order);
 
@@ -241,11 +242,18 @@ export class Counter {
         return new Promise(async (resolve, reject) => {
             if (this._cache.has(guild.id)) return reject('Guild already registered')
 
+            const permissionOverwrites: OverwriteData[] = [
+                {
+                    id: guild.id,
+                    deny: ['Connect']
+                }
+            ];
             if (!category) {
                 category = await guild.channels.create({
                     name: names.category ?? this.configs.defaultChannelNames.category,
                     type: ChannelType.GuildCategory,
-                    position: 1
+                    position: 1,
+                    permissionOverwrites
                 });
             }
 
@@ -261,19 +269,22 @@ export class Counter {
                     chans[orderData] = await guild.channels.create({
                         name: names[orderData],
                         type,
-                        parent: category
+                        parent: category,
+                        permissionOverwrites
                     });
                 if (enable[orderData])
                     chans[orderData] = await guild.channels.create({
                         name: names[orderData],
                         type,
-                        parent: category
+                        parent: category,
+                        permissionOverwrites
                     });
                 if (enable[orderData])
                     chans[orderData] = await guild.channels.create({
                         name: names[orderData],
                         type,
-                        parent: category
+                        parent: category,
+                        permissionOverwrites
                     });
             }
             

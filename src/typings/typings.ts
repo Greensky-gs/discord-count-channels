@@ -28,7 +28,7 @@ export type databaseTable = {
     channelType: countChannelType;
 };
 
-export type createCountersType = {
+export type createCountersType<T extends countChannelType = countChannelType> = {
     guild: Guild;
     enable?: {
         all?: boolean;
@@ -48,7 +48,8 @@ export type createCountersType = {
      * If not provided, category is created
      */
     category?: CategoryChannel;
-    channelsType?: countChannelType;
+    channelsType?: T;
     order?: channelCounterTypes[];
     locale?: string;
+    voiceJoinable?: T extends 'voice' ? boolean : null
 };
