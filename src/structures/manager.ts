@@ -193,7 +193,14 @@ export class Counter {
             }
             this.cache.set(guild.id, {
                 enabled: this.generateEnableList(enable),
-                all_chan: chans.all ? chans.all?.id : ''
+                all_chan: chans?.all?.id ?? '',
+                all_name: names.all,
+                guild_id: guild.id,
+                bots: chans?.bots?.id ?? '',
+                bots_name: names.bots,
+                humans: chans?.humans?.id ?? '',
+                humans_name: names?.humans,
+                category: category.id
             });
         });
     }
