@@ -252,6 +252,15 @@ export class Counter {
             return resolve(data);
         });
     }
+    public removeGuildCounter(guild_id: string): Promise<databaseTable> {
+        return new Promise(async(resolve, reject) => {
+            if (!this.cache.has(guild_id)) return reject('Guild not exists in cache')
+            const data = this.cache.get(guild_id);
+
+            await this.query(`DELETE FROM counters WHERE guild_id="${guild_id}"`);
+            resolve(data);
+        })
+    }
     private getVar(str: string) {
         if (!str) return str;
         return str.replace(/"/g, '\\"');
