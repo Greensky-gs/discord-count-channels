@@ -1,12 +1,6 @@
 import { ChannelType, Client, Collection, OverwriteData } from 'discord.js';
 import { Connection } from 'mysql';
-import {
-    counterType,
-    configsType,
-    countChannelType,
-    createCountersType,
-    databaseTable
-} from '../typings/typings';
+import { counterType, configsType, countChannelType, createCountersType, databaseTable } from '../typings/typings';
 import { getValidChannelOrder } from '../utils/functions';
 
 export class Counter {
@@ -132,8 +126,16 @@ export class Counter {
             resolve();
         });
     }
-    public changeCounterName({ guild_id, counter, name }: { guild_id: string; counter: counterType; name: string }): Promise<databaseTable> {
-        return new Promise(async(resolve, reject) => {
+    public changeCounterName({
+        guild_id,
+        counter,
+        name
+    }: {
+        guild_id: string;
+        counter: counterType;
+        name: string;
+    }): Promise<databaseTable> {
+        return new Promise(async (resolve, reject) => {
             if (!this._cache.has(guild_id)) return reject('Guild not registered');
             const datas = this._cache.get(guild_id);
 
@@ -141,13 +143,13 @@ export class Counter {
                 all: 'all_name',
                 bots: 'bots_name',
                 humans: 'humans_name'
-            }
-            datas[mapping[counter]] = name
+            };
+            datas[mapping[counter]] = name;
             this._cache.set(guild_id, datas);
 
             await this.updateCounters(guild_id);
             resolve(datas);
-        })
+        });
     }
     private updateCounters(guild_id: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
@@ -253,15 +255,7 @@ export class Counter {
             resolve();
         });
     }
-    private resolveChannelName({
-        guild_id,
-        channel,
-        int
-    }: {
-        guild_id: string;
-        channel: counterType;
-        int: number;
-    }) {
+    private resolveChannelName({ guild_id, channel, int }: { guild_id: string; channel: counterType; int: number }) {
         const x: Record<string, 'all_chan' | 'bots' | 'humans'> = {
             all: 'all_chan',
             bots: 'bots',
