@@ -77,24 +77,28 @@ export class Counter {
     /**
      * @warning This method works only for cached datas
      */
-    private setEnabled({ type, state, guild_id }: { type: channelCounterTypes; state: boolean; guild_id: string }) {
-        let list = this._cache.get(guild_id).enabled;
-
-        const mapping: Record<channelCounterTypes, number> = {
-            all: 0,
-            bots: 1,
-            humans: 2
-        };
-        const arr = [...list];
-
-        arr[mapping[type]] = state ? 't' : 'f';
-        list = arr.join('');
-
-        this._cache.set(guild_id, {
-            ...this._cache.get(guild_id),
-            enabled: list
-        });
-        this.query(`UPDATE counters SET enabled='${list}' WHERE guild_id='${guild_id}'`);
+    private setEnabled({ type, state, guild_id }: { type: channelCounterTypes; state: boolean; guild_id: string }): Promise<databaseTable> {
+        return new Promise(async(resolve) => {
+            let list = this._cache.get(guild_id).enabled;
+    
+            const mapping: Record<channelCounterTypes, number> = {
+                all: 0,
+                bots: 1,
+                humans: 2
+            };
+            const arr = [...list];
+    
+            arr[mapping[type]] = state ? 't' : 'f';
+            list = arr.join('');
+    
+            this._cache.set(guild_id, {
+                ...this._cache.get(guild_id),
+                enabled: list
+            });
+            
+            await this.query(`UPDATE counters SET enabled='${list}' WHERE guild_id='${guild_id}'`);
+            resolve(this.cache.get(guild_id));           
+        })
     }
     private generateEnableList(configs?: { all?: boolean; humans?: boolean; bots?: boolean }) {
         const toStr = (bool: boolean) => (bool ? 't' : 'f');
@@ -318,6 +322,19 @@ export class Counter {
     private getVar(str: string) {
         if (!str) return str;
         return str.replace(/"/g, '\\"');
+    }
+    private updateCounterEnable({ guild_id, counter, state = true }: { guild_id: string; counter: channelCounterTypes; state?: boolean }): Promise<databaseTable> {
+        return new Promise(async(resolve, reject) => {
+            if (!this.cache.has(guild_id)) return reject('Guild not registered')
+
+            await this.setEnabled({
+                type: counter,
+                guild_id,
+                state
+            })
+            await this.updateCounters(guild_id);
+            return resolve(this.cache.get(guild_id));
+        })
     }
     public getChannelType(inp: countChannelType): any {
         const obj = {
