@@ -56,7 +56,8 @@ export class Counter {
             all_name VARCHAR(255) DEFAULT NULL,
             bots_name VARCHAR(255) DEFAULT NULL,
             humans_name VARCHAR(255) DEFAULT NULL,
-            locale VARCHAR(2) NOT NULL DEFAULT '${this.configs.defaultLocale}'
+            locale VARCHAR(2) NOT NULL DEFAULT '${this.configs.defaultLocale}',
+            channelType VARCHAR(255) NOT NULL DEFAULT '${this.configs?.defaultChannelType}'
         )`);
 
         await this.fillCache();
@@ -166,12 +167,12 @@ export class Counter {
 
             if (this.getEnabled({ guild_id, type: 'all' })) {
                 const channel =
-                    (await guild.channels.fetch(all_chan)) ??
+                    (await guild.channels.fetch(all_chan).catch(() => {})) ??
                     (await guild.channels.create({
                         name: this.resolveChannelName({
                             guild_id,
                             channel: 'all',
-                            int: guild.memberCount
+                            int: 0
                         }),
                         type: this.getChannelType(channelType)
                     }));
@@ -182,7 +183,7 @@ export class Counter {
                             this.resolveChannelName({
                                 guild_id,
                                 channel: 'all',
-                                int: 0
+                                int: guild.memberCount
                             })
                         )
                     );
@@ -190,7 +191,7 @@ export class Counter {
             }
             if (this.getEnabled({ guild_id, type: 'bots' })) {
                 const channel =
-                    (await guild.channels.fetch(bots)) ??
+                    (await guild.channels.fetch(bots).catch(() => {})) ??
                     (await guild.channels.create({
                         name: this.resolveChannelName({
                             guild_id,
@@ -214,7 +215,7 @@ export class Counter {
             }
             if (this.getEnabled({ guild_id, type: 'humans' })) {
                 const channel =
-                    (await guild.channels.fetch(humans)) ??
+                    (await guild.channels.fetch(humans).catch(() => {})) ??
                     (await guild.channels.create({
                         name: this.resolveChannelName({
                             guild_id,
@@ -278,7 +279,7 @@ export class Counter {
         channelsType = this.configs.defaultChannelType,
         order,
         locale = this.configs.defaultLocale,
-        voiceJoinable = true
+        voiceJoinable = false
     }: createCountersType): Promise<databaseTable> {
         order = getValidChannelOrder(order);
 
@@ -323,20 +324,6 @@ export class Counter {
                         parent: category,
                         permissionOverwrites
                     });
-                if (enable[orderData])
-                    chans[orderData] = await guild.channels.create({
-                        name: names[orderData],
-                        type,
-                        parent: category,
-                        permissionOverwrites
-                    });
-                if (enable[orderData])
-                    chans[orderData] = await guild.channels.create({
-                        name: names[orderData],
-                        type,
-                        parent: category,
-                        permissionOverwrites
-                    });
             }
 
             const data = {
@@ -356,7 +343,7 @@ export class Counter {
 
             await this.updateCounters(guild.id);
             await this.query(
-                `INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, botss_name, humans_name, locale, channelType) VALUES ("${
+                `INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, bots_name, humans_name, locale, channelType) VALUES ("${
                     guild.id
                 }", "${this.generateEnableList(enable)}", "${chans?.all?.id ?? ''}", "${chans?.humans?.id ?? ''}", "${
                     chans?.bots?.id ?? ''
