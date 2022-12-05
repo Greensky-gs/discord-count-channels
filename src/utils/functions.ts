@@ -1,8 +1,8 @@
-import { channelCounterTypes } from "../typings/typings";
+import { channelCounterTypes } from '../typings/typings';
 
 export const countInArray = (array: any[], value: any): number => {
     return array.reduce((n, x) => n + (x === value), 0);
-}
+};
 export const getValidChannelOrder = (order: channelCounterTypes[]): channelCounterTypes[] => {
     if (!order || !(order instanceof Array) || order.length !== 3) return ['all', 'bots', 'humans'];
 
@@ -12,4 +12,4 @@ export const getValidChannelOrder = (order: channelCounterTypes[]): channelCount
     }
     if (!validArray) return ['all', 'bots', 'humans'];
     return order;
-}
+};

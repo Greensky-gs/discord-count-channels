@@ -13,7 +13,7 @@ export type configsType = {
     defaultChannelOrders?: channelCounterTypes[];
     defaultChannelEnabled?: Record<channelCounterTypes, boolean>;
     defaultLocale?: string;
-}
+};
 export type databaseTable = {
     guild_id: string;
     enabled: string;
@@ -25,7 +25,7 @@ export type databaseTable = {
     bots_name: string;
     humans_name: string;
     locale: string;
-}
+};
 
 export type createCountersType = {
     guild: Guild;
@@ -50,4 +50,4 @@ export type createCountersType = {
     channelsType?: countChannelType;
     order?: channelCounterTypes[];
     locale?: string;
-}
+};
