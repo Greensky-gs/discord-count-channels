@@ -13,7 +13,7 @@ export class Counter {
     public readonly client: Client;
     public readonly database: Connection;
     public readonly configs: configsType;
-    private cache: Collection<string, databaseTable> = new Collection();
+    private _cache: Collection<string, databaseTable> = new Collection();
 
     constructor(client: Client, database: Connection, configs?: configsType) {
         this.client = client;
@@ -69,7 +69,7 @@ export class Counter {
             bots: 1,
             humans: 2
         };
-        const enabledList = this.cache.get(guild_id)?.enabled;
+        const enabledList = this._cache.get(guild_id)?.enabled;
         if (!enabledList) return this.configs.defaultChannelEnabled[type];
 
         return enabledList[mapping[type]] === 't' ? true : false;
@@ -78,7 +78,7 @@ export class Counter {
      * @warning This method works only for cached datas
      */
     private setEnabled({ type, state, guild_id }: { type: channelCounterTypes; state: boolean; guild_id: string }) {
-        let list = this.cache.get(guild_id).enabled;
+        let list = this._cache.get(guild_id).enabled;
 
         const mapping: Record<channelCounterTypes, number> = {
             all: 0,
@@ -90,8 +90,8 @@ export class Counter {
         arr[mapping[type]] = state ? 't' : 'f';
         list = arr.join('');
 
-        this.cache.set(guild_id, {
-            ...this.cache.get(guild_id),
+        this._cache.set(guild_id, {
+            ...this._cache.get(guild_id),
             enabled: list
         });
         this.query(`UPDATE counters SET enabled='${list}' WHERE guild_id='${guild_id}'`);
@@ -116,7 +116,7 @@ export class Counter {
             const datas = await this.query<databaseTable>(`SELECT * FROM counters`);
     
             for (const data of datas) {
-                this.cache.set(data.guild_id, data);
+                this._cache.set(data.guild_id, data);
             }
 
             resolve();
@@ -124,7 +124,7 @@ export class Counter {
     }
     private updateCounters(guild_id: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
-            const { all_chan, bots, humans } = this.cache.get(guild_id);
+            const { all_chan, bots, humans } = this._cache.get(guild_id);
             const guild = this.client.guilds.cache.get(guild_id);
 
             if (!guild) return reject('Guild not found');
@@ -173,9 +173,9 @@ export class Counter {
             bots: 'bots',
             humans: 'humans'
         };
-        return this.cache
+        return this._cache
             .get(guild_id)
-            [x[channel]].replace(/\{count\}/g, int.toLocaleString(this.cache.get(guild_id).locale));
+            [x[channel]].replace(/\{count\}/g, int.toLocaleString(this._cache.get(guild_id).locale));
     }
     public createCounters({
         guild,
@@ -194,7 +194,7 @@ export class Counter {
         });
 
         return new Promise(async (resolve, reject) => {
-            if (this.cache.has(guild.id)) return reject('Guild already registered')
+            if (this._cache.has(guild.id)) return reject('Guild already registered')
 
             if (!category) {
                 category = await guild.channels.create({
@@ -244,7 +244,7 @@ export class Counter {
                 category: category.id,
                 locale: locale
             }
-            this.cache.set(guild.id, data);
+            this._cache.set(guild.id, data);
 
             await this.updateCounters(guild.id);
             await this.query(`INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, botss_name, humans_name, locale) VALUES ("${guild.id}", "${this.generateEnableList(enable)}", "${chans?.all?.id ?? ''}", "${chans?.humans?.id ?? ''}", "${chans?.bots?.id ?? ''}", "${category.id}", "${this.getVar(names?.all) ?? ''}", "${this.getVar(names?.bots) ?? ''}", "${this.getVar(names?.humans) ?? ''}", "${locale}" )`);
@@ -254,12 +254,15 @@ export class Counter {
     }
     public removeGuildCounter(guild_id: string): Promise<databaseTable> {
         return new Promise(async(resolve, reject) => {
-            if (!this.cache.has(guild_id)) return reject('Guild not exists in cache')
-            const data = this.cache.get(guild_id);
+            if (!this._cache.has(guild_id)) return reject('Guild not exists in cache')
+            const data = this._cache.get(guild_id);
 
             await this.query(`DELETE FROM counters WHERE guild_id="${guild_id}"`);
             resolve(data);
         })
+    }
+    public get counterList() {
+        return this._cache;
     }
     private getVar(str: string) {
         if (!str) return str;
@@ -275,10 +278,10 @@ export class Counter {
     }
     private setEvent() {
         this.client.on('guildMemberAdd', (member) => {
-            if (this.cache.has(member.guild.id)) this.updateCounters(member.guild.id)
+            if (this._cache.has(member.guild.id)) this.updateCounters(member.guild.id)
         })
         this.client.on('guildMemberRemove', (member) => {
-            if (this.cache.has(member.guild.id)) this.updateCounters(member.guild.id)
+            if (this._cache.has(member.guild.id)) this.updateCounters(member.guild.id)
         })
     }
     private async syncCounters() {
