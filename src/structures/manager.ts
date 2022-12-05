@@ -1,4 +1,4 @@
-import { ChannelType, Client, Collection, Guild, OverwriteData } from 'discord.js';
+import { ChannelType, Client, Collection, OverwriteData } from 'discord.js';
 import { Connection } from 'mysql';
 import {
     channelCounterTypes,
