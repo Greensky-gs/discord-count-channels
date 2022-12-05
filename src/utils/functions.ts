@@ -1,4 +1,4 @@
-import { channelCounterTypes } from '../typings/typings';
+import { counterType } from '../typings/typings';
 
 /**
  * Count how many times a value is occured in an array
@@ -14,7 +14,7 @@ export const countInArray = (array: any[], value: any): number => {
  * @param order Order to check
  * @returns A valid order
  */
-export const getValidChannelOrder = (order: channelCounterTypes[]): channelCounterTypes[] => {
+export const getValidChannelOrder = (order: counterType[]): counterType[] => {
     if (!order || !(order instanceof Array) || order.length !== 3) return ['all', 'bots', 'humans'];
 
     let validArray = true;

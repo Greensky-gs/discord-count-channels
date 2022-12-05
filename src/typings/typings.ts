@@ -5,7 +5,7 @@ import { Guild, CategoryChannel } from 'discord.js';
  *
  * This is the types of counters you can set
  */
-export type channelCounterTypes = 'bots' | 'humans' | 'all';
+export type counterType = 'bots' | 'humans' | 'all';
 
 /**
  * count channel types
@@ -31,15 +31,15 @@ export type configsType = {
      *
      * @var Use {count} to set the number in the name
      */
-    defaultChannelNames?: Record<channelCounterTypes | 'category', string>;
+    defaultChannelNames?: Record<counterType | 'category', string>;
     /**
      * Default counters channel order to all servers
      */
-    defaultChannelOrders?: channelCounterTypes[];
+    defaultChannelOrders?: counterType[];
     /**
      * Default channel enabled values to all servers
      */
-    defaultChannelEnabled?: Record<channelCounterTypes, boolean>;
+    defaultChannelEnabled?: Record<counterType, boolean>;
     /**
      * Default locale for all servers
      *
@@ -157,7 +157,7 @@ export type createCountersType<T extends countChannelType = countChannelType> = 
     /**
      * Counters channel order
      */
-    order?: channelCounterTypes[];
+    order?: counterType[];
     /**
      * Counters language
      *

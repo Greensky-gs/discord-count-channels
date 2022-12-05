@@ -1,7 +1,7 @@
 import { ChannelType, Client, Collection, OverwriteData } from 'discord.js';
 import { Connection } from 'mysql';
 import {
-    channelCounterTypes,
+    counterType,
     configsType,
     countChannelType,
     createCountersType,
@@ -64,8 +64,8 @@ export class Counter {
         this.setEvent();
         this.syncCounters();
     }
-    public getEnabled({ guild_id, type }: { guild_id: string; type: channelCounterTypes }) {
-        const mapping: Record<channelCounterTypes, number> = {
+    public getEnabled({ guild_id, type }: { guild_id: string; type: counterType }) {
+        const mapping: Record<counterType, number> = {
             all: 0,
             bots: 1,
             humans: 2
@@ -80,14 +80,14 @@ export class Counter {
         state,
         guild_id
     }: {
-        type: channelCounterTypes;
+        type: counterType;
         state: boolean;
         guild_id: string;
     }): Promise<databaseTable> {
         return new Promise(async (resolve) => {
             let list = this._cache.get(guild_id).enabled;
 
-            const mapping: Record<channelCounterTypes, number> = {
+            const mapping: Record<counterType, number> = {
                 all: 0,
                 bots: 1,
                 humans: 2
@@ -110,7 +110,7 @@ export class Counter {
         const toStr = (bool: boolean) => (bool ? 't' : 'f');
         if (configs) {
             let str = '';
-            for (const x of ['all', 'bots', 'humans'] as channelCounterTypes[]) {
+            for (const x of ['all', 'bots', 'humans'] as counterType[]) {
                 str += toStr(configs[x] ?? this.configs.defaultChannelEnabled[x]);
             }
             return str;
@@ -132,12 +132,12 @@ export class Counter {
             resolve();
         });
     }
-    public changeCounterName({ guild_id, counter, name }: { guild_id: string; counter: channelCounterTypes; name: string }): Promise<databaseTable> {
+    public changeCounterName({ guild_id, counter, name }: { guild_id: string; counter: counterType; name: string }): Promise<databaseTable> {
         return new Promise(async(resolve, reject) => {
             if (!this._cache.has(guild_id)) return reject('Guild not registered');
             const datas = this._cache.get(guild_id);
 
-            const mapping: Record<channelCounterTypes, 'all_name' | 'bots_name' | 'humans_name'> = {
+            const mapping: Record<counterType, 'all_name' | 'bots_name' | 'humans_name'> = {
                 all: 'all_name',
                 bots: 'bots_name',
                 humans: 'humans_name'
@@ -159,7 +159,7 @@ export class Counter {
             const promises = [];
             await guild.members.fetch();
 
-            const ids: Record<channelCounterTypes, string> = {
+            const ids: Record<counterType, string> = {
                 all: '',
                 bots: '',
                 humans: ''
@@ -259,7 +259,7 @@ export class Counter {
         int
     }: {
         guild_id: string;
-        channel: channelCounterTypes;
+        channel: counterType;
         int: number;
     }) {
         const x: Record<string, 'all_chan' | 'bots' | 'humans'> = {
@@ -283,7 +283,7 @@ export class Counter {
     }: createCountersType): Promise<databaseTable> {
         order = getValidChannelOrder(order);
 
-        (['all', 'bots', 'humans'] as channelCounterTypes[]).forEach((x) => {
+        (['all', 'bots', 'humans'] as counterType[]).forEach((x) => {
             names[x] = names[x] ?? this.configs.defaultChannelNames[x];
             enable[x] = enable[x] ?? this.configs.defaultChannelEnabled[x];
         });
@@ -392,7 +392,7 @@ export class Counter {
         state = true
     }: {
         guild_id: string;
-        counter: channelCounterTypes;
+        counter: counterType;
         state?: boolean;
     }): Promise<databaseTable> {
         return new Promise(async (resolve, reject) => {
