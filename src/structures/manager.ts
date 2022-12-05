@@ -59,7 +59,9 @@ export class Counter {
             locale VARCHAR(2) NOT NULL DEFAULT '${this.configs.defaultLocale}'
         )`);
 
-        this.fillCache();
+        await this.fillCache();
+        this.setEvent();
+        this.syncCounters();
     }
     public getEnabled({ guild_id, type }: { guild_id: string; type: channelCounterTypes }) {
         const mapping: Record<channelCounterTypes, number> = {
@@ -109,12 +111,16 @@ export class Counter {
             toStr(this.configs.defaultChannelEnabled.humans)
         );
     }
-    private async fillCache() {
-        const datas = await this.query<databaseTable>(`SELECT * FROM counters`);
+    private fillCache(): Promise<void> {
+        return new Promise(async(resolve) => {
+            const datas = await this.query<databaseTable>(`SELECT * FROM counters`);
+    
+            for (const data of datas) {
+                this.cache.set(data.guild_id, data);
+            }
 
-        for (const data of datas) {
-            this.cache.set(data.guild_id, data);
-        }
+            resolve();
+        })
     }
     private updateCounters(guild_id: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
@@ -257,5 +263,19 @@ export class Counter {
             stage: ChannelType.GuildStageVoice
         };
         return obj[inp];
+    }
+    private setEvent() {
+        this.client.on('guildMemberAdd', (member) => {
+            if (this.cache.has(member.guild.id)) this.updateCounters(member.guild.id)
+        })
+        this.client.on('guildMemberRemove', (member) => {
+            if (this.cache.has(member.guild.id)) this.updateCounters(member.guild.id)
+        })
+    }
+    private async syncCounters() {
+        await this.client.guilds.fetch();
+        this.client.guilds.cache.forEach((guild) => {
+            this.updateCounters(guild.id);
+        });
     }
 }
