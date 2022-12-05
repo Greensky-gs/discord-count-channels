@@ -47,7 +47,7 @@ export class Counter {
     }
     public async start() {
         await this.query(`CREATE TABLE IF NOT EXISTS counters (
-            guild_id TEXT NOT NULL PRIMARY KEY,
+            guild_id TEXT(255) NOT NULL PRIMARY KEY,
             enabled TEXT(3) NOT NULL DEFAULT '${this.generateEnableList()}',
             all_chan VARCHAR(255) DEFAULT NULL,
             humans VARCHAR(255) DEFAULT NULL,
