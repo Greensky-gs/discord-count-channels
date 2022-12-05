@@ -131,6 +131,13 @@ export class Counter {
 
             const promises = [];
             await guild.members.fetch();
+
+            const ids: Record<channelCounterTypes, string> = {
+                all: '',
+                bots: '',
+                humans: ''
+            }
+
             if (this.getEnabled({ guild_id, type: 'all' })) {
                 const channel = await guild.channels.fetch(all_chan) ?? await guild.channels.create({
                     name: this.resolveChannelName({
@@ -146,6 +153,7 @@ export class Counter {
                     channel: 'all',
                     int: 0
                 })))
+                ids.all = channel.id;
             }
             if (this.getEnabled({ guild_id, type: 'bots' })) {
                 const channel = await guild.channels.fetch(bots) ?? await guild.channels.create({
@@ -155,13 +163,14 @@ export class Counter {
                         int: 0
                     }),
                     type: this.getChannelType(channelType)
-                });;
+                })
 
                 if (channel) promises.push(channel.setName(this.resolveChannelName({
                     guild_id,
                     channel: 'bots',
                     int: guild.members.cache.filter(x => x.user.bot).size
                 })))
+                ids.bots = channel.id
             }
             if (this.getEnabled({ guild_id, type: 'humans' })) {
                 const channel = await guild.channels.fetch(humans) ?? await guild.channels.create({
@@ -177,8 +186,17 @@ export class Counter {
                     channel: 'humans',
                     int: guild.members.cache.filter(x => !x.user.bot).size
                 })))
+                ids.humans = channel.id
             }
-            await Promise.all(promises);
+
+            this.cache.set(guild_id, {
+                ...this.cache.get(guild_id),
+                all_chan: ids.all,
+                humans: ids.humans,
+                bots: ids.bots
+            })
+
+            await Promise.all([ ...promises, this.query(`UPDATE counters SET all_chan='${ids.all}', bots='${ids.bots}', humans='${ids.humans}' WHERE guild_id='${guild_id}'`) ]);
             resolve();
         });
     }
