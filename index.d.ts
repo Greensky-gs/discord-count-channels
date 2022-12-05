@@ -59,4 +59,14 @@ export class Counter {
      * @param inp count channel type
      */
     public getChannelType(inp: countChannelType): any;
+
+    /**
+     * Change the name of a counter
+     * 
+     * The counter name is immediatly updated on the server
+     * @param options Options for the change name method
+     * 
+     * Remember to use {count} to display count
+     */
+    public changeCounterName(options: { guild_id: string; counter: channelCounterTypes; name: string }): Promise<tableType>;
 }

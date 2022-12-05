@@ -1,4 +1,4 @@
-import { ChannelType, Client, Collection, OverwriteData } from 'discord.js';
+import { ChannelType, Client, Collection, Guild, OverwriteData } from 'discord.js';
 import { Connection } from 'mysql';
 import {
     channelCounterTypes,
@@ -130,6 +130,23 @@ export class Counter {
 
             resolve();
         });
+    }
+    public changeCounterName({ guild_id, counter, name }: { guild_id: string; counter: channelCounterTypes; name: string }): Promise<databaseTable> {
+        return new Promise(async(resolve, reject) => {
+            if (!this._cache.has(guild_id)) return reject('Guild not registered');
+            const datas = this._cache.get(guild_id);
+
+            const mapping: Record<channelCounterTypes, 'all_name' | 'bots_name' | 'humans_name'> = {
+                all: 'all_name',
+                bots: 'bots_name',
+                humans: 'humans_name'
+            }
+            datas[mapping[counter]] = name
+            this._cache.set(guild_id, datas);
+
+            await this.updateCounters(guild_id);
+            resolve(datas);
+        })
     }
     private updateCounters(guild_id: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
