@@ -379,7 +379,7 @@ export class Counter {
         if (!str) return str;
         return str.replace(/"/g, '\\"');
     }
-    private updateCounterEnable({
+    public updateCounterEnable({
         guild_id,
         counter,
         state = true
