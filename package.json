@@ -1,6 +1,6 @@
 {
   "name": "discord-count-channels",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "main": "dist/index.js",
   "repository": "https://github.com/Greensky-gs/discord-count-channels",
   "author": "Greensky <david.hesliere@gmail.com>",
