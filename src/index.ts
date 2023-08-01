@@ -1,7 +1,7 @@
 export { Counter } from './structures/manager';
 export {
     databaseTable as tableType,
-    counterType as channelCounterTypes,
+    counterType,
     configsType,
     countChannelType,
     createCountersType
