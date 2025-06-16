@@ -59,7 +59,7 @@ export class Counter<T extends databaseType = databaseType> {
             if (!existsSync(this.database.filePath)) {
                 writeFileSync(this.database.filePath, '{}');
             }
-            new JSONDb(this.database.filePath)
+            (this.db as databaseValueType<'json'>) = new JSONDb(this.database.filePath);
         } else if (this.isMySQL()) {
             await this.query(`CREATE TABLE IF NOT EXISTS counters (
 guild_id TEXT(255) NOT NULL PRIMARY KEY,
@@ -180,6 +180,7 @@ channelType VARCHAR(255) NOT NULL DEFAULT '${this.configs?.defaultChannelType}'
         });
     }
     private updateCounters(guild_id: string): Promise<void> {
+        if (!this._cache.has(guild_id)) return;
         return new Promise(async (resolve, reject) => {
             const { all_chan, bots, humans, channelType } = this._cache.get(guild_id);
             const guild = await this.client.guilds.fetch(guild_id);
@@ -294,10 +295,10 @@ channelType VARCHAR(255) NOT NULL DEFAULT '${this.configs?.defaultChannelType}'
         return true;
     }
     private resolveChannelName({ guild_id, channel, int }: { guild_id: string; channel: counterType; int: number }) {
-        const x: Record<string, 'all_chan' | 'bots' | 'humans'> = {
-            all: 'all_chan',
-            bots: 'bots',
-            humans: 'humans'
+        const x: Record<string, 'all_name' | 'bots_name' | 'humans_name'> = {
+            all: 'all_name',
+            bots: 'bots_name',
+            humans: 'humans_name'
         };
         return this._cache
             .get(guild_id)
