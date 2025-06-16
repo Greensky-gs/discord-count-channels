@@ -1,15 +1,19 @@
 import { ChannelType, Client, Collection, OverwriteData } from 'discord.js';
 import { Connection } from 'mysql';
-import { counterType, configsType, countChannelType, createCountersType, databaseTable } from '../typings/typings';
+import { counterType, configsType, countChannelType, createCountersType, databaseTable, databaseType, databaseConfig, databaseValueType } from '../typings/typings';
 import { getValidChannelOrder } from '../utils/functions';
+import { existsSync, writeFileSync } from 'node:fs';
+import JSONDb from 'easy-json-database';
 
-export class Counter {
+export class Counter<T extends databaseType = databaseType> {
     public readonly client: Client;
-    public readonly database: Connection;
+    public readonly database: databaseConfig<T>;
     public readonly configs: configsType;
+
+    private db: databaseValueType<T>;
     private _cache: Collection<string, databaseTable> = new Collection();
 
-    constructor(client: Client, database: Connection, configs?: configsType) {
+    constructor(client: Client, database: databaseConfig<T>, configs?: configsType) {
         this.client = client;
         this.database = database;
 
@@ -31,30 +35,54 @@ export class Counter {
             defaultLocale: (configs?.defaultLocale ?? 'en').length > 2 ? 'en' : configs?.defaultLocale ?? 'en'
         };
     }
-    public query<T = any>(sql: string): Promise<T[]> {
-        return new Promise<T[]>((resolve, reject) => {
-            this.database.query(sql, (error, request) => {
-                if (error) return reject(error);
-                resolve(request);
-            });
-        });
-    }
-    public async start() {
-        await this.query(`CREATE TABLE IF NOT EXISTS counters (
-            guild_id TEXT(255) NOT NULL PRIMARY KEY,
-            enabled TEXT(3) NOT NULL DEFAULT '${this.generateEnableList()}',
-            all_chan VARCHAR(255) DEFAULT NULL,
-            humans VARCHAR(255) DEFAULT NULL,
-            bots VARCHAR(255) DEFAULT NULL,
-            category VARCHAR(255) NOT NULL,
-            all_name VARCHAR(255) DEFAULT NULL,
-            bots_name VARCHAR(255) DEFAULT NULL,
-            humans_name VARCHAR(255) DEFAULT NULL,
-            locale VARCHAR(2) NOT NULL DEFAULT '${this.configs.defaultLocale}',
-            channelType VARCHAR(255) NOT NULL DEFAULT '${this.configs?.defaultChannelType}'
-        )`);
 
+    public isMySQL(): this is Counter<'mysql'> {
+        return this.database.type === 'mysql';
+    }
+    public isJSON(): this is Counter<'json'> {
+        return this.database.type === 'json';
+    }
+
+    private query<K = any>(sql: string): Promise<K[]> {
+        if (this.isMySQL()) {
+            return new Promise<K[]>((resolve, reject) => {
+                this.database.connection.query(sql, (error, request) => {
+                    if (error) return reject(error);
+                    resolve(request);
+                });
+            });
+        }
+    }
+
+    private async setupDb() {
+        if (this.isJSON()) {
+            if (!existsSync(this.database.filePath)) {
+                writeFileSync(this.database.filePath, '{}');
+            }
+            new JSONDb(this.database.filePath)
+        } else if (this.isMySQL()) {
+            await this.query(`CREATE TABLE IF NOT EXISTS counters (
+guild_id TEXT(255) NOT NULL PRIMARY KEY,
+enabled TEXT(3) NOT NULL DEFAULT '${this.generateEnableList()}',
+all_chan VARCHAR(255) DEFAULT NULL,
+humans VARCHAR(255) DEFAULT NULL,
+bots VARCHAR(255) DEFAULT NULL,
+category VARCHAR(255) NOT NULL,
+all_name VARCHAR(255) DEFAULT NULL,
+bots_name VARCHAR(255) DEFAULT NULL,
+humans_name VARCHAR(255) DEFAULT NULL,
+locale VARCHAR(2) NOT NULL DEFAULT '${this.configs.defaultLocale}',
+channelType VARCHAR(255) NOT NULL DEFAULT '${this.configs?.defaultChannelType}'
+        )`);
+        }
+
+        return true;
+    }
+
+    public async start() {
+        await this.setupDb()       
         await this.fillCache();
+
         this.setEvent();
         this.syncCounters();
     }
@@ -96,7 +124,7 @@ export class Counter {
                 enabled: list
             });
 
-            await this.query(`UPDATE counters SET enabled='${list}' WHERE guild_id='${guild_id}'`);
+            await this.updateDatabase(guild_id).catch(() => {});
             resolve(this.cache.get(guild_id));
         });
     }
@@ -115,16 +143,16 @@ export class Counter {
             toStr(this.configs.defaultChannelEnabled.humans)
         );
     }
-    private fillCache(): Promise<void> {
-        return new Promise(async (resolve) => {
+    private async fillCache(): Promise<void> {
+        if (this.isMySQL()) {
             const datas = await this.query<databaseTable>(`SELECT * FROM counters`);
-
+    
             for (const data of datas) {
                 this._cache.set(data.guild_id, data);
             }
-
-            resolve();
-        });
+        } else if (this.isJSON()) {
+            this._cache = new Collection<string, databaseTable>(this.db.all().map(({ key, data }) => [key, data as databaseTable]));
+        }
     }
     public changeCounterName({
         guild_id,
@@ -154,7 +182,7 @@ export class Counter {
     private updateCounters(guild_id: string): Promise<void> {
         return new Promise(async (resolve, reject) => {
             const { all_chan, bots, humans, channelType } = this._cache.get(guild_id);
-            const guild = this.client.guilds.cache.get(guild_id);
+            const guild = await this.client.guilds.fetch(guild_id);
 
             if (!guild) return reject('Guild not found');
 
@@ -248,12 +276,22 @@ export class Counter {
 
             await Promise.all([
                 ...promises,
-                this.query(
-                    `UPDATE counters SET all_chan='${ids.all}', bots='${ids.bots}', humans='${ids.humans}' WHERE guild_id='${guild_id}'`
-                )
+                this.updateDatabase(guild_id).catch(() => {})
             ]);
             resolve();
         });
+    }
+    private async updateDatabase(guild_id: string) {
+        const values = this._cache.get(guild_id);
+
+        if (this.isJSON()) {
+            this.db.set(guild_id, values)
+        } else if (this.isMySQL()) {
+            await this.query(
+                `UPDATE counters SET all_chan="${values.all_chan}", humans="${values.humans}", bots="${values.bots}", category="${values.category}", all_name="${this.getVar(values.all_name)}", bots_name="${this.getVar(values.bots_name)}", humans_name="${this.getVar(values.humans_name)}", locale="${values.locale}", channelType="${values.channelType}", enabled="${values.enabled}" WHERE guild_id="${guild_id}"`
+            ).catch(() => {})
+        }
+        return true;
     }
     private resolveChannelName({ guild_id, channel, int }: { guild_id: string; channel: counterType; int: number }) {
         const x: Record<string, 'all_chan' | 'bots' | 'humans'> = {
@@ -264,6 +302,18 @@ export class Counter {
         return this._cache
             .get(guild_id)
             [x[channel]].replace(/\{count\}/g, int.toLocaleString(this._cache.get(guild_id).locale));
+    }
+    private async createDatabase(values: databaseTable) {
+        if (this.isJSON()) {
+            this.db.set(values.guild_id, values);
+        } else if (this.isMySQL()) {
+            await this.query(
+                `INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, bots_name, humans_name, locale, channelType) VALUES ("${
+                    values.guild_id
+                }", "${values.enabled}", "${values.all_chan}", "${values.humans}", "${values.bots}", "${values.category}", "${this.getVar(values.all_name)}", "${this.getVar(values.bots_name)}", "${this.getVar(values.humans_name)}", "${values.locale}", "${values.channelType}" )`
+            );
+        }
+        return true
     }
     public createCounters({
         guild,
@@ -336,15 +386,7 @@ export class Counter {
             this._cache.set(guild.id, data);
 
             await this.updateCounters(guild.id);
-            await this.query(
-                `INSERT INTO counters (guild_id, enabled, all_chan, humans, bots, category, all_name, bots_name, humans_name, locale, channelType) VALUES ("${
-                    guild.id
-                }", "${this.generateEnableList(enable)}", "${chans?.all?.id ?? ''}", "${chans?.humans?.id ?? ''}", "${
-                    chans?.bots?.id ?? ''
-                }", "${category.id}", "${this.getVar(names?.all) ?? ''}", "${this.getVar(names?.bots) ?? ''}", "${
-                    this.getVar(names?.humans) ?? ''
-                }", "${locale}", "${channelsType ?? this.configs?.defaultChannelType}" )`
-            );
+            await this.createDatabase(data).catch(() => {});
 
             return resolve(data);
         });
@@ -369,9 +411,17 @@ export class Counter {
                     if (chan) await chan.delete().catch(() => {});
                 }
             }
-            await this.query(`DELETE FROM counters WHERE guild_id="${guild_id}"`);
+            await this.deleteFromDatabase(guild_id).catch(() => {});
             resolve(data);
         });
+    }
+    private async deleteFromDatabase(guild_id: string) {
+        if (this.isJSON()) {
+            this.db.delete(guild_id);
+        } else if (this.isMySQL()) {
+            await this.query(`DELETE FROM counters WHERE guild_id="${guild_id}"`).catch(() => {});
+        }
+        return true;
     }
     public get cache() {
         return this._cache;

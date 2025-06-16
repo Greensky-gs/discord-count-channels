@@ -1,4 +1,6 @@
 import { Guild, CategoryChannel } from 'discord.js';
+import EasyJSONDatabase from 'easy-json-database';
+import { Connection } from 'mysql';
 
 /**
  * Counter channels names types.
@@ -48,6 +50,16 @@ export type configsType = {
      */
     defaultLocale?: string;
 };
+
+export type databaseType = 'mysql' | 'json';
+export type databaseConfig<T extends databaseType = databaseType> = T extends 'mysql' ? {
+    type: T;
+    connection: Connection;
+} : T extends 'json' ? {
+    type: T;
+    filePath: string;
+} : never;
+export type databaseValueType<T extends databaseType = databaseType> = T extends 'mysql' ? Connection : T extends 'json' ? EasyJSONDatabase : never;
 export type databaseTable = {
     /**
      * Guild ID
